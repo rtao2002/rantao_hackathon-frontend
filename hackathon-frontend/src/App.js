@@ -1,14 +1,29 @@
 import { useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { fireAuth } from "./firebase";
+import LoginButton from "./LoginButton";
 
-const API_URL = "https://rantao-hackathon-backend-1000732984276.us-central1.run.app";
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  "https://rantao-hackathon-backend-1000732984276.us-central1.run.app";
 
 function App() {
+  const [user, setUser] = useState(null);
+
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [message, setMessage] = useState("");
   const [questions, setQuestions] = useState([]);
 
   const [answerTexts, setAnswerTexts] = useState({});
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(fireAuth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const fetchQuestions = async () => {
     try {
@@ -43,11 +58,24 @@ function App() {
   const submitQuestion = async (e) => {
     e.preventDefault();
 
+    if (!user) {
+      setMessage("Please login before submitting a question.");
+      return;
+    }
+
+    if (!title.trim() || !body.trim()) {
+      setMessage("Please enter both a title and question details.");
+      return;
+    }
+
     try {
+      const token = await user.getIdToken();
+
       const response = await fetch(`${API_URL}/questions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           title: title,
@@ -70,6 +98,11 @@ function App() {
   };
 
   const submitAnswer = async (questionId) => {
+    if (!user) {
+      setMessage("Please login before submitting an answer.");
+      return;
+    }
+
     const answerBody = answerTexts[questionId];
 
     if (!answerBody || answerBody.trim() === "") {
@@ -78,10 +111,13 @@ function App() {
     }
 
     try {
+      const token = await user.getIdToken();
+
       const response = await fetch(`${API_URL}/questions/${questionId}/answers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           body: answerBody,
@@ -109,12 +145,29 @@ function App() {
     <div style={{ padding: "40px", fontFamily: "Arial, sans-serif" }}>
       <h1>Student Q&A</h1>
 
+      <LoginButton user={user} />
+
+      <p style={{ color: "gray" }}>
+        
+      </p>
+
+      <hr />
+
       <form onSubmit={submitQuestion}>
+        <h2>Ask a Question</h2>
+
+        {!user && (
+          <p style={{ color: "red" }}>
+            Please login before submitting a question.
+          </p>
+        )}
+
         <div>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Question title"
+            disabled={!user}
             style={{
               width: "500px",
               padding: "8px",
@@ -128,6 +181,7 @@ function App() {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Question details"
+            disabled={!user}
             style={{
               width: "500px",
               height: "120px",
@@ -136,7 +190,11 @@ function App() {
           />
         </div>
 
-        <button type="submit" style={{ marginTop: "10px" }}>
+        <button
+          type="submit"
+          disabled={!user}
+          style={{ marginTop: "10px" }}
+        >
           Submit Question
         </button>
       </form>
@@ -181,29 +239,37 @@ function App() {
             <p style={{ color: "gray" }}>No answers yet.</p>
           )}
 
-          <textarea
-            value={answerTexts[q.id] || ""}
-            onChange={(e) =>
-              setAnswerTexts({
-                ...answerTexts,
-                [q.id]: e.target.value,
-              })
-            }
-            placeholder="Write an answer..."
-            style={{
-              width: "100%",
-              height: "80px",
-              padding: "8px",
-              marginTop: "10px",
-            }}
-          />
+          {user ? (
+            <>
+              <textarea
+                value={answerTexts[q.id] || ""}
+                onChange={(e) =>
+                  setAnswerTexts({
+                    ...answerTexts,
+                    [q.id]: e.target.value,
+                  })
+                }
+                placeholder="Write an answer..."
+                style={{
+                  width: "100%",
+                  height: "80px",
+                  padding: "8px",
+                  marginTop: "10px",
+                }}
+              />
 
-          <button
-            onClick={() => submitAnswer(q.id)}
-            style={{ marginTop: "8px" }}
-          >
-            Submit Answer
-          </button>
+              <button
+                onClick={() => submitAnswer(q.id)}
+                style={{ marginTop: "8px" }}
+              >
+                Submit Answer
+              </button>
+            </>
+          ) : (
+            <p style={{ color: "gray" }}>
+              Please login to submit an answer.
+            </p>
+          )}
         </div>
       ))}
     </div>
