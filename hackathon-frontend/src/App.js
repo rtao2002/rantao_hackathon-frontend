@@ -17,6 +17,10 @@ function App() {
 
   const [answerTexts, setAnswerTexts] = useState({});
 
+  const [aiResult, setAiResult] = useState(null);
+  const [isCheckingAI, setIsCheckingAI] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(fireAuth, (currentUser) => {
       setUser(currentUser);
@@ -28,6 +32,11 @@ function App() {
   const fetchQuestions = async () => {
     try {
       const response = await fetch(`${API_URL}/questions`);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch questions");
+      }
+
       const data = await response.json();
 
       const questionsWithAnswers = await Promise.all(
@@ -35,6 +44,11 @@ function App() {
           const answerResponse = await fetch(
             `${API_URL}/questions/${question.id}/answers`
           );
+
+          if (!answerResponse.ok) {
+            throw new Error("Failed to fetch answers");
+          }
+
           const answers = await answerResponse.json();
 
           return {
@@ -55,6 +69,65 @@ function App() {
     fetchQuestions();
   }, []);
 
+  const runAIQuestionCheck = async () => {
+    if (!user) {
+      setMessage("Please login before using AI check.");
+      return null;
+    }
+
+    if (!title.trim() || !body.trim()) {
+      setMessage("Please enter both a title and question details first.");
+      return null;
+    }
+
+    const token = await user.getIdToken();
+
+    const response = await fetch(`${API_URL}/ai/check-question`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        title: title,
+        body: body,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to check question with AI");
+    }
+
+    const data = await response.json();
+    setAiResult(data);
+
+    return data;
+  };
+
+  const checkQuestionWithAI = async () => {
+    try {
+      setIsCheckingAI(true);
+      setMessage("AI is checking your question...");
+
+      const data = await runAIQuestionCheck();
+
+      if (!data) {
+        return;
+      }
+
+      if (data.is_appropriate === false) {
+        setMessage("AI flagged this question. Please review before submitting.");
+      } else {
+        setMessage("AI check completed. This question looks okay.");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Error checking question with AI.");
+    } finally {
+      setIsCheckingAI(false);
+    }
+  };
+
   const submitQuestion = async (e) => {
     e.preventDefault();
 
@@ -69,6 +142,20 @@ function App() {
     }
 
     try {
+      setIsSubmitting(true);
+      setMessage("Checking question with AI before submitting...");
+
+      const aiData = await runAIQuestionCheck();
+
+      if (!aiData) {
+        return;
+      }
+
+      if (aiData.is_appropriate === false) {
+        setMessage("AI flagged this question, so it was not submitted.");
+        return;
+      }
+
       const token = await user.getIdToken();
 
       const response = await fetch(`${API_URL}/questions`, {
@@ -89,11 +176,14 @@ function App() {
 
       setTitle("");
       setBody("");
+      setAiResult(null);
       setMessage("Question submitted!");
       fetchQuestions();
     } catch (error) {
       console.error(error);
       setMessage("Error submitting question");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -141,15 +231,21 @@ function App() {
     }
   };
 
+  const handleTitleChange = (e) => {
+    setTitle(e.target.value);
+    setAiResult(null);
+  };
+
+  const handleBodyChange = (e) => {
+    setBody(e.target.value);
+    setAiResult(null);
+  };
+
   return (
     <div style={{ padding: "40px", fontFamily: "Arial, sans-serif" }}>
       <h1>Student Q&A</h1>
 
       <LoginButton user={user} />
-
-      <p style={{ color: "gray" }}>
-        
-      </p>
 
       <hr />
 
@@ -165,7 +261,7 @@ function App() {
         <div>
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={handleTitleChange}
             placeholder="Question title"
             disabled={!user}
             style={{
@@ -179,7 +275,7 @@ function App() {
         <div>
           <textarea
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={handleBodyChange}
             placeholder="Question details"
             disabled={!user}
             style={{
@@ -191,12 +287,67 @@ function App() {
         </div>
 
         <button
+          type="button"
+          onClick={checkQuestionWithAI}
+          disabled={!user || isCheckingAI || isSubmitting}
+          style={{ marginTop: "10px", marginRight: "8px" }}
+        >
+          {isCheckingAI ? "Checking..." : "Check with AI"}
+        </button>
+
+        <button
           type="submit"
-          disabled={!user}
+          disabled={!user || isSubmitting || isCheckingAI}
           style={{ marginTop: "10px" }}
         >
-          Submit Question
+          {isSubmitting ? "Submitting..." : "Submit Question"}
         </button>
+
+        {aiResult && (
+          <div
+            style={{
+              border: aiResult.is_appropriate
+                ? "1px solid #9bd19b"
+                : "1px solid #e39b9b",
+              borderRadius: "8px",
+              padding: "12px",
+              marginTop: "16px",
+              width: "500px",
+              backgroundColor: aiResult.is_appropriate ? "#f4fff4" : "#fff4f4",
+            }}
+          >
+            <h3>AI Check Result</h3>
+
+            <p>
+              <strong>Status:</strong>{" "}
+              {aiResult.is_appropriate ? "Looks okay" : "Flagged"}
+            </p>
+
+            <p>
+              <strong>Appropriateness:</strong>{" "}
+              {aiResult.appropriateness_reason}
+            </p>
+
+            <p>
+              <strong>Clarity:</strong>{" "}
+              {aiResult.is_clear ? "Clear enough" : "Could be clearer"}
+            </p>
+
+            <p>
+              <strong>Clarity reason:</strong> {aiResult.clarity_reason}
+            </p>
+
+            <p>
+              <strong>Category:</strong> {aiResult.category}
+            </p>
+
+            {aiResult.warning && (
+              <p>
+                <strong>Warning:</strong> {aiResult.warning}
+              </p>
+            )}
+          </div>
+        )}
       </form>
 
       <p>{message}</p>
