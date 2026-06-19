@@ -221,35 +221,56 @@ function App() {
       setMessage("質問の読み込み中にエラーが発生しました。");
     }
   };
+  
   const handleSearch = async () => {
-    if (!searchText.trim()) {
-      setSearchResults([]);
-      setMessage("検索キーワードを入力してください。");
-      return;
+  if (!searchText.trim()) {
+    setSearchResults([]);
+    setMessage("検索キーワードを入力してください。");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_URL}/questions/search?q=${encodeURIComponent(searchText)}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to search questions");
     }
 
-    try {
-      const response = await fetch(
-        `${API_URL}/questions/search?q=${encodeURIComponent(searchText)}`
-      );
+    const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error("Failed to search questions");
-      }
+    const searchResultsWithAnswers = await Promise.all(
+      data.map(async (question) => {
+        const answerResponse = await fetch(
+          `${API_URL}/questions/${question.id}/answers`
+        );
 
-      const data = await response.json();
-      setSearchResults(data);
+        if (!answerResponse.ok) {
+          throw new Error("Failed to fetch answers for search results");
+        }
 
-      if (data.length === 0) {
-        setMessage("該当する質問は見つかりませんでした。");
-      } else {
-        setMessage(`${data.length}件の質問が見つかりました。`);
-      }
-    } catch (error) {
-      console.error(error);
-      setMessage("検索中にエラーが発生しました。");
+        const answers = await answerResponse.json();
+
+        return {
+          ...question,
+          answers: answers,
+        };
+      })
+    );
+
+    setSearchResults(searchResultsWithAnswers);
+
+    if (searchResultsWithAnswers.length === 0) {
+      setMessage("該当する質問は見つかりませんでした。");
+    } else {
+      setMessage(`${searchResultsWithAnswers.length}件の質問が見つかりました。`);
     }
-  };
+  } catch (error) {
+    console.error(error);
+    setMessage("検索中にエラーが発生しました。");
+  }
+};
 
   useEffect(() => {
     fetchQuestions();
@@ -580,9 +601,24 @@ function App() {
               <h3 style={{ marginBottom: "12px" }}>検索結果</h3>
 
               {searchResults.map((q) => (
-                <div key={q.id} style={styles.answerBox}>
-                  <strong>{q.title}</strong>
-                  <p style={{ marginBottom: 0 }}>{q.body}</p>
+                <div key={q.id} style={styles.questionCard}>
+                  <h3 style={styles.questionTitle}>{q.title}</h3>
+
+                  <p style={styles.questionBody}>{q.body}</p>
+
+                  <h4 style={{ marginBottom: "10px" }}>回答</h4>
+
+                  {q.answers && q.answers.length > 0 ? (
+                    q.answers.map((answer) => (
+                      <div key={answer.id} style={styles.answerBox}>
+                        <p style={{ margin: 0, lineHeight: "1.6" }}>
+                          {answer.body}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{ color: "#9ca3af" }}>まだ回答はありません。</p>
+                  )}
                 </div>
               ))}
             </div>
