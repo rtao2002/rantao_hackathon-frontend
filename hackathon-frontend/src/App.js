@@ -169,6 +169,9 @@ function App() {
   const [message, setMessage] = useState("");
   const [questions, setQuestions] = useState([]);
 
+  const [searchText, setSearchText] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+
   const [answerTexts, setAnswerTexts] = useState({});
 
   const [aiResult, setAiResult] = useState(null);
@@ -216,6 +219,35 @@ function App() {
     } catch (error) {
       console.error(error);
       setMessage("質問の読み込み中にエラーが発生しました。");
+    }
+  };
+  const handleSearch = async () => {
+    if (!searchText.trim()) {
+      setSearchResults([]);
+      setMessage("検索キーワードを入力してください。");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/questions/search?q=${encodeURIComponent(searchText)}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to search questions");
+      }
+
+      const data = await response.json();
+      setSearchResults(data);
+
+      if (data.length === 0) {
+        setMessage("該当する質問は見つかりませんでした。");
+      } else {
+        setMessage(`${data.length}件の質問が見つかりました。`);
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("検索中にエラーが発生しました。");
     }
   };
 
@@ -523,7 +555,39 @@ function App() {
               )}
             </div>
           )}
-        </form>
+                </form>
+
+        <div style={styles.card}>
+          <h2 style={styles.sectionTitle}>質問を検索する</h2>
+
+          <input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="キーワードを入力してください"
+            style={styles.input}
+          />
+
+          <button
+            type="button"
+            onClick={handleSearch}
+            style={styles.aiButton}
+          >
+            検索する
+          </button>
+
+          {searchResults.length > 0 && (
+            <div style={{ marginTop: "20px" }}>
+              <h3 style={{ marginBottom: "12px" }}>検索結果</h3>
+
+              {searchResults.map((q) => (
+                <div key={q.id} style={styles.answerBox}>
+                  <strong>{q.title}</strong>
+                  <p style={{ marginBottom: 0 }}>{q.body}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {message && <div style={styles.message}>{message}</div>}
 
