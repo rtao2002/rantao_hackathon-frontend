@@ -374,7 +374,7 @@ function App() {
         body: JSON.stringify({
           title: title,
           body: body,
-          category: aiData.category || "other",
+          category: guessCategory(title, body, aiData.category),
         }),
       });
 
@@ -461,7 +461,77 @@ function App() {
 
     return labels[category] || category || "未分類";
   };
+  
+  const guessCategory = (title, body, aiCategory) => {
+    const text = `${title} ${body}`.toLowerCase();
 
+    if (
+      text.includes("class") ||
+      text.includes("course") ||
+      text.includes("lecture") ||
+      text.includes("exam") ||
+      text.includes("homework") ||
+      text.includes("assignment") ||
+      text.includes("授業") ||
+      text.includes("講義") ||
+      text.includes("試験") ||
+      text.includes("テスト") ||
+      text.includes("課題") ||
+      text.includes("履修") ||
+      text.includes("単位")
+    ) {
+      return "class";
+    }
+
+    if (
+      text.includes("research") ||
+      text.includes("lab") ||
+      text.includes("laboratory") ||
+      text.includes("研究") ||
+      text.includes("研究室") ||
+      text.includes("実験")
+    ) {
+      return "research";
+    }
+
+    if (
+      text.includes("career") ||
+      text.includes("job") ||
+      text.includes("internship") ||
+      text.includes("就活") ||
+      text.includes("進路") ||
+      text.includes("キャリア") ||
+      text.includes("インターン")
+    ) {
+      return "career";
+    }
+
+    if (
+      text.includes("admin") ||
+      text.includes("procedure") ||
+      text.includes("document") ||
+      text.includes("事務") ||
+      text.includes("手続き") ||
+      text.includes("書類") ||
+      text.includes("申請")
+    ) {
+      return "admin";
+    }
+
+    if (
+      text.includes("life") ||
+      text.includes("club") ||
+      text.includes("circle") ||
+      text.includes("サークル") ||
+      text.includes("生活") ||
+      text.includes("寮") ||
+      text.includes("食堂")
+    ) {
+      return "life";
+    }
+
+    return aiCategory || "other";
+  };
   const isActionDisabled = !user || isCheckingAI || isSubmitting;
 
   return (
