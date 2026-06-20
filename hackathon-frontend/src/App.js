@@ -374,6 +374,7 @@ function App() {
         body: JSON.stringify({
           title: title,
           body: body,
+          category: aiData.category || "other",
         }),
       });
 
@@ -602,8 +603,17 @@ function App() {
 
               {searchResults.map((q) => (
                 <div key={q.id} style={styles.questionCard}>
-                  <h3 style={styles.questionTitle}>{q.title}</h3>
+                  <span
+                    style={{
+                      ...styles.badge,
+                      backgroundColor: "#eef2ff",
+                      color: "#4338ca",
+                    }}
+                  >
+                    {getCategoryLabel(q.category)}
+                  </span>
 
+                  <h3 style={styles.questionTitle}>{q.title}</h3>
                   <p style={styles.questionBody}>{q.body}</p>
 
                   <h4 style={{ marginBottom: "10px" }}>回答</h4>
@@ -638,6 +648,16 @@ function App() {
         ) : (
           questions.map((q) => (
             <div key={q.id} style={styles.questionCard}>
+              <span
+                style={{
+                  ...styles.badge,
+                  backgroundColor: "#eef2ff",
+                  color: "#4338ca",
+                }}
+              >
+                {getCategoryLabel(q.category)}
+              </span>
+
               <h3 style={styles.questionTitle}>{q.title}</h3>
               <p style={styles.questionBody}>{q.body}</p>
 
