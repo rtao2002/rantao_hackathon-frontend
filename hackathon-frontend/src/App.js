@@ -191,7 +191,7 @@ function App() {
       const response = await fetch(`${API_URL}/questions`);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch questions");
+        throw new Error("Failed to fetch items");
       }
 
       const data = await response.json();
@@ -203,7 +203,7 @@ function App() {
           );
 
           if (!answerResponse.ok) {
-            throw new Error("Failed to fetch answers");
+            throw new Error("Failed to fetch comments");
           }
 
           const answers = await answerResponse.json();
@@ -218,7 +218,7 @@ function App() {
       setQuestions(questionsWithAnswers);
     } catch (error) {
       console.error(error);
-      setMessage("質問の読み込み中にエラーが発生しました。");
+      setMessage("出品の読み込み中にエラーが発生しました。");
     }
   };
   
@@ -235,7 +235,7 @@ function App() {
     );
 
     if (!response.ok) {
-      throw new Error("Failed to search questions");
+      throw new Error("Failed to search items");
     }
 
     const data = await response.json();
@@ -247,7 +247,7 @@ function App() {
         );
 
         if (!answerResponse.ok) {
-          throw new Error("Failed to fetch answers for search results");
+          throw new Error("Failed to fetch comments for search results");
         }
 
         const answers = await answerResponse.json();
@@ -262,9 +262,9 @@ function App() {
     setSearchResults(searchResultsWithAnswers);
 
     if (searchResultsWithAnswers.length === 0) {
-      setMessage("該当する質問は見つかりませんでした。");
+      setMessage("該当する商品は見つかりませんでした。");
     } else {
-      setMessage(`${searchResultsWithAnswers.length}件の質問が見つかりました。`);
+      setMessage(`${searchResultsWithAnswers.length}件の商品が見つかりました。`);
     }
   } catch (error) {
     console.error(error);
@@ -283,7 +283,7 @@ function App() {
     }
 
     if (!title.trim() || !body.trim()) {
-      setMessage("タイトルと質問内容を入力してください。");
+      setMessage("商品名と商品説明を入力してください。");
       return null;
     }
 
@@ -302,7 +302,7 @@ function App() {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to check question with AI");
+      throw new Error("Failed to check item with AI");
     }
 
     const data = await response.json();
@@ -314,7 +314,7 @@ function App() {
   const checkQuestionWithAI = async () => {
     try {
       setIsCheckingAI(true);
-      setMessage("AIが質問内容を確認しています...");
+      setMessage("AIが出品内容を確認しています...");
 
       const data = await runAIQuestionCheck();
 
@@ -323,9 +323,9 @@ function App() {
       }
 
       if (data.is_appropriate === false) {
-        setMessage("AIがこの質問を要確認として判定しました。投稿前に内容を確認してください。");
+        setMessage("AIがこの出品を要確認として判定しました。投稿前に内容を確認してください。");
       } else {
-        setMessage("AIチェックが完了しました。この質問は投稿できそうです。");
+        setMessage("AIチェックが完了しました。この出品は投稿できそうです。");
       }
     } catch (error) {
       console.error(error);
@@ -339,18 +339,18 @@ function App() {
     e.preventDefault();
 
     if (!user) {
-      setMessage("質問を投稿するにはログインしてください。");
+      setMessage("出品するにはログインしてください。");
       return;
     }
 
     if (!title.trim() || !body.trim()) {
-      setMessage("タイトルと質問内容を入力してください。");
+      setMessage("商品名と商品説明を入力してください。");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      setMessage("投稿前にAIが質問内容を確認しています...");
+      setMessage("投稿前にAIが出品内容を確認しています...");
 
       const aiData = await runAIQuestionCheck();
 
@@ -359,7 +359,7 @@ function App() {
       }
 
       if (aiData.is_appropriate === false) {
-        setMessage("AIがこの質問を要確認として判定したため、投稿されませんでした。");
+        setMessage("AIがこの出品を要確認として判定したため、投稿されませんでした。");
         return;
       }
 
@@ -379,17 +379,17 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to submit question");
+        throw new Error("Failed to submit item");
       }
 
       setTitle("");
       setBody("");
       setAiResult(null);
-      setMessage("質問を投稿しました！");
+      setMessage("出品を投稿しました！");
       fetchQuestions();
     } catch (error) {
       console.error(error);
-      setMessage("質問の投稿中にエラーが発生しました。");
+      setMessage("出品の投稿中にエラーが発生しました。");
     } finally {
       setIsSubmitting(false);
     }
@@ -397,14 +397,14 @@ function App() {
 
   const submitAnswer = async (questionId) => {
     if (!user) {
-      setMessage("回答を投稿するにはログインしてください。");
+      setMessage("コメントを投稿するにはログインしてください。");
       return;
     }
 
     const answerBody = answerTexts[questionId];
 
     if (!answerBody || answerBody.trim() === "") {
-      setMessage("回答内容を入力してください。");
+      setMessage("コメント内容を入力してください。");
       return;
     }
 
@@ -423,7 +423,7 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to submit answer");
+        throw new Error("Failed to submit comment");
       }
 
       setAnswerTexts({
@@ -431,11 +431,11 @@ function App() {
         [questionId]: "",
       });
 
-      setMessage("回答を投稿しました！");
+      setMessage("コメントを投稿しました！");
       fetchQuestions();
     } catch (error) {
       console.error(error);
-      setMessage("回答の投稿中にエラーが発生しました。");
+      setMessage("コメントの投稿中にエラーが発生しました。");
     }
   };
 
@@ -451,11 +451,12 @@ function App() {
 
   const getCategoryLabel = (category) => {
     const labels = {
-      class: "授業",
-      research: "研究",
-      life: "学生生活",
-      admin: "事務・手続き",
-      career: "進路・キャリア",
+      textbook: "教科書・本",
+      furniture: "家具",
+      electronics: "家電・電子機器",
+      clothing: "服・小物",
+      daily: "日用品",
+      ticket: "チケット・イベント",
       other: "その他",
     };
 
@@ -466,68 +467,76 @@ function App() {
     const text = `${title} ${body}`.toLowerCase();
 
     if (
-      text.includes("class") ||
-      text.includes("course") ||
-      text.includes("lecture") ||
-      text.includes("exam") ||
-      text.includes("homework") ||
-      text.includes("assignment") ||
-      text.includes("授業") ||
-      text.includes("講義") ||
-      text.includes("試験") ||
-      text.includes("テスト") ||
-      text.includes("課題") ||
-      text.includes("履修") ||
-      text.includes("単位")
+      text.includes("textbook") ||
+      text.includes("book") ||
+      text.includes("教科書") ||
+      text.includes("参考書") ||
+      text.includes("本") ||
+      text.includes("書籍") ||
+      text.includes("問題集")
     ) {
-      return "class";
+      return "textbook";
     }
 
     if (
-      text.includes("research") ||
-      text.includes("lab") ||
-      text.includes("laboratory") ||
-      text.includes("研究") ||
-      text.includes("研究室") ||
-      text.includes("実験")
+      text.includes("furniture") ||
+      text.includes("desk") ||
+      text.includes("chair") ||
+      text.includes("bed") ||
+      text.includes("家具") ||
+      text.includes("机") ||
+      text.includes("椅子") ||
+      text.includes("ベッド") ||
+      text.includes("棚")
     ) {
-      return "research";
+      return "furniture";
     }
 
     if (
-      text.includes("career") ||
-      text.includes("job") ||
-      text.includes("internship") ||
-      text.includes("就活") ||
-      text.includes("進路") ||
-      text.includes("キャリア") ||
-      text.includes("インターン")
+      text.includes("electronics") ||
+      text.includes("pc") ||
+      text.includes("laptop") ||
+      text.includes("家電") ||
+      text.includes("電子") ||
+      text.includes("パソコン") ||
+      text.includes("モニター") ||
+      text.includes("ケーブル") ||
+      text.includes("炊飯器") ||
+      text.includes("冷蔵庫")
     ) {
-      return "career";
+      return "electronics";
     }
 
     if (
-      text.includes("admin") ||
-      text.includes("procedure") ||
-      text.includes("document") ||
-      text.includes("事務") ||
-      text.includes("手続き") ||
-      text.includes("書類") ||
-      text.includes("申請")
+      text.includes("clothing") ||
+      text.includes("服") ||
+      text.includes("靴") ||
+      text.includes("バッグ") ||
+      text.includes("小物") ||
+      text.includes("コート")
     ) {
-      return "admin";
+      return "clothing";
     }
 
     if (
-      text.includes("life") ||
-      text.includes("club") ||
-      text.includes("circle") ||
-      text.includes("サークル") ||
-      text.includes("生活") ||
-      text.includes("寮") ||
-      text.includes("食堂")
+      text.includes("ticket") ||
+      text.includes("event") ||
+      text.includes("チケット") ||
+      text.includes("イベント") ||
+      text.includes("ライブ")
     ) {
-      return "life";
+      return "ticket";
+    }
+
+    if (
+      text.includes("daily") ||
+      text.includes("日用品") ||
+      text.includes("生活用品") ||
+      text.includes("キッチン") ||
+      text.includes("食器") ||
+      text.includes("文具")
+    ) {
+      return "daily";
     }
 
     return aiCategory || "other";
@@ -539,10 +548,10 @@ function App() {
       <div style={styles.container}>
         <header style={styles.header}>
           <div>
-            <h1 style={styles.title}>東大知恵袋 — 先輩に聞こう！</h1>
+            <h1 style={styles.title}>東大フリマ — 学生同士でゆずり合おう！</h1>
             <p style={styles.subtitle}>
-              授業、研究、学生生活、進路のことなど、ちょっと聞きにくいことも気軽に質問できる場所です。
-              投稿前にAIが内容を確認します。
+              教科書、家具、家電、日用品などを東大生同士で気軽に譲り合える場所です。
+              投稿前にAIが出品内容を確認します。
             </p>
           </div>
 
@@ -550,18 +559,18 @@ function App() {
         </header>
 
         <form onSubmit={submitQuestion} style={styles.card}>
-          <h2 style={styles.sectionTitle}>質問する</h2>
+          <h2 style={styles.sectionTitle}>出品する</h2>
 
           {!user && (
             <p style={{ color: "#dc2626", fontWeight: "600" }}>
-              質問や回答を投稿するにはログインしてください。
+              出品やコメントを投稿するにはログインしてください。
             </p>
           )}
 
           <input
             value={title}
             onChange={handleTitleChange}
-            placeholder="質問のタイトル"
+            placeholder="商品名（例：微積分の教科書）"
             disabled={!user}
             style={styles.input}
           />
@@ -569,7 +578,8 @@ function App() {
           <textarea
             value={body}
             onChange={handleBodyChange}
-            placeholder="質問の内容を詳しく書いてください"
+            placeholder="商品の説明、価格、状態、受け渡し場所を書いてください
+例：価格 500円／状態 やや傷あり／受け渡し 駒場キャンパス"
             disabled={!user}
             style={styles.textarea}
           />
@@ -595,7 +605,7 @@ function App() {
                 ...(isActionDisabled ? styles.disabledButton : {}),
               }}
             >
-              {isSubmitting ? "投稿中..." : "質問を投稿する"}
+              {isSubmitting ? "投稿中..." : "出品を投稿する"}
             </button>
           </div>
 
@@ -650,7 +660,7 @@ function App() {
                 </form>
 
         <div style={styles.card}>
-          <h2 style={styles.sectionTitle}>質問を検索する</h2>
+          <h2 style={styles.sectionTitle}>商品を検索する</h2>
 
           <input
             value={searchText}
@@ -686,7 +696,7 @@ function App() {
                   <h3 style={styles.questionTitle}>{q.title}</h3>
                   <p style={styles.questionBody}>{q.body}</p>
 
-                  <h4 style={{ marginBottom: "10px" }}>回答</h4>
+                  <h4 style={{ marginBottom: "10px" }}>コメント</h4>
 
                   {q.answers && q.answers.length > 0 ? (
                     q.answers.map((answer) => (
@@ -697,7 +707,7 @@ function App() {
                       </div>
                     ))
                   ) : (
-                    <p style={{ color: "#9ca3af" }}>まだ回答はありません。</p>
+                    <p style={{ color: "#9ca3af" }}>まだコメントはありません。</p>
                   )}
                 </div>
               ))}
@@ -707,12 +717,12 @@ function App() {
 
         {message && <div style={styles.message}>{message}</div>}
 
-        <h2 style={styles.sectionTitle}>最近の質問</h2>
+        <h2 style={styles.sectionTitle}>最近の出品</h2>
 
         {questions.length === 0 ? (
           <div style={styles.card}>
             <p style={{ color: "#6b7280", margin: 0 }}>
-              まだ質問がありません。最初の質問を投稿してみましょう！
+              まだ出品がありません。最初の商品を出品してみましょう！
             </p>
           </div>
         ) : (
@@ -731,7 +741,7 @@ function App() {
               <h3 style={styles.questionTitle}>{q.title}</h3>
               <p style={styles.questionBody}>{q.body}</p>
 
-              <h4 style={{ marginBottom: "10px" }}>回答</h4>
+              <h4 style={{ marginBottom: "10px" }}>コメント</h4>
 
               {q.answers && q.answers.length > 0 ? (
                 q.answers.map((answer) => (
@@ -740,7 +750,7 @@ function App() {
                   </div>
                 ))
               ) : (
-                <p style={{ color: "#9ca3af" }}>まだ回答はありません。</p>
+                <p style={{ color: "#9ca3af" }}>まだコメントはありません。</p>
               )}
 
               {user ? (
@@ -753,7 +763,7 @@ function App() {
                         [q.id]: e.target.value,
                       })
                     }
-                    placeholder="回答を書く..."
+                    placeholder="コメントを書く..."
                     style={{
                       ...styles.textarea,
                       height: "90px",
@@ -768,12 +778,12 @@ function App() {
                       marginTop: "10px",
                     }}
                   >
-                    回答を投稿する
+                    コメントを投稿する
                   </button>
                 </>
               ) : (
                 <p style={{ color: "#9ca3af" }}>
-                  回答するにはログインしてください。
+                  コメントするにはログインしてください。
                 </p>
               )}
             </div>
