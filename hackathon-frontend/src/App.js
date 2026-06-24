@@ -7,6 +7,8 @@ const API_URL =
   process.env.REACT_APP_API_URL ||
   "https://rantao-hackathon-backend-1000732984276.us-central1.run.app";
 
+const SELLER_INFO_PREFIX = "__SELLER_INFO__:";
+
 const styles = {
   page: {
     minHeight: "100vh",
@@ -158,6 +160,42 @@ const styles = {
     fontSize: "13px",
     fontWeight: "700",
     marginBottom: "10px",
+  },
+  sellerRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    flexWrap: "wrap",
+    backgroundColor: "#f8fafc",
+    border: "1px solid #e5e7eb",
+    borderRadius: "14px",
+    padding: "10px 12px",
+    marginBottom: "12px",
+  },
+  sellerText: {
+    margin: 0,
+    color: "#4b5563",
+    fontSize: "14px",
+    fontWeight: "600",
+  },
+  dmButton: {
+    padding: "8px 12px",
+    border: "1px solid #a5b4fc",
+    borderRadius: "999px",
+    backgroundColor: "#eef2ff",
+    color: "#3730a3",
+    fontWeight: "700",
+    cursor: "pointer",
+    textDecoration: "none",
+    fontSize: "14px",
+  },
+  publicCommentNote: {
+    marginTop: "18px",
+    marginBottom: "8px",
+    color: "#6b7280",
+    fontSize: "14px",
+    lineHeight: "1.6",
   },
 };
 
@@ -373,7 +411,7 @@ function App() {
         },
         body: JSON.stringify({
           title: title,
-          body: body,
+          body: buildBodyWithSellerInfo(body),
           category: guessCategory(title, body, aiData.category),
         }),
       });
@@ -397,14 +435,14 @@ function App() {
 
   const submitAnswer = async (questionId) => {
     if (!user) {
-      setMessage("コメントを投稿するにはログインしてください。");
+      setMessage("公開公開コメントを投稿するにはログインしてください。");
       return;
     }
 
     const answerBody = answerTexts[questionId];
 
     if (!answerBody || answerBody.trim() === "") {
-      setMessage("コメント内容を入力してください。");
+      setMessage("公開コメントの内容を入力してください。");
       return;
     }
 
@@ -431,7 +469,7 @@ function App() {
         [questionId]: "",
       });
 
-      setMessage("コメントを投稿しました！");
+      setMessage("公開コメントを投稿しました！");
       fetchQuestions();
     } catch (error) {
       console.error(error);
@@ -541,6 +579,65 @@ function App() {
 
     return aiCategory || "other";
   };
+  const buildBodyWithSellerInfo = (originalBody) => {
+    const sellerInfo = {
+      name: user?.displayName || "名前未設定",
+      email: user?.email || "",
+    };
+
+    return `${SELLER_INFO_PREFIX}${JSON.stringify(sellerInfo)}\n${originalBody}`;
+  };
+
+  const getSellerInfo = (question) => {
+    const rawBody = question?.body || "";
+
+    if (!rawBody.startsWith(SELLER_INFO_PREFIX)) {
+      return {
+        name: "出品者情報なし",
+        email: "",
+      };
+    }
+
+    const firstLine = rawBody.split("\n")[0];
+    const jsonText = firstLine.replace(SELLER_INFO_PREFIX, "");
+
+    try {
+      const parsed = JSON.parse(jsonText);
+      return {
+        name: parsed.name || "名前未設定",
+        email: parsed.email || "",
+      };
+    } catch (error) {
+      return {
+        name: "出品者情報なし",
+        email: "",
+      };
+    }
+  };
+
+  const getDisplayBody = (question) => {
+    const rawBody = question?.body || "";
+
+    if (!rawBody.startsWith(SELLER_INFO_PREFIX)) {
+      return rawBody;
+    }
+
+    return rawBody.split("\n").slice(1).join("\n");
+  };
+
+  const createDmLink = (question) => {
+    const seller = getSellerInfo(question);
+
+    if (!seller.email) {
+      return "";
+    }
+
+    const subject = `【東大フリマ】${question.title}について`;
+    const mailBody = `${seller.name}さん\n\n東大フリマの「${question.title}」について連絡しました。\n\n`; 
+
+    return `mailto:${seller.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailBody)}`;
+  };
+
   const isActionDisabled = !user || isCheckingAI || isSubmitting;
 
   return (
@@ -551,7 +648,7 @@ function App() {
             <h1 style={styles.title}>東大フリマ — 学生同士でゆずり合おう！</h1>
             <p style={styles.subtitle}>
               教科書、家具、家電、日用品などを東大生同士で気軽に譲り合える場所です。
-              投稿前にAIが出品内容を確認します。
+              投稿前にAIが出品内容を確認します。出品者への個別連絡もできます。
             </p>
           </div>
 
@@ -563,7 +660,7 @@ function App() {
 
           {!user && (
             <p style={{ color: "#dc2626", fontWeight: "600" }}>
-              出品やコメントを投稿するにはログインしてください。
+              出品や公開コメントを投稿するにはログインしてください。
             </p>
           )}
 
@@ -694,9 +791,29 @@ function App() {
                   </span>
 
                   <h3 style={styles.questionTitle}>{q.title}</h3>
-                  <p style={styles.questionBody}>{q.body}</p>
+                  <div style={styles.sellerRow}>
+                    <p style={styles.sellerText}>
+                      出品者：{getSellerInfo(q).name}
+                    </p>
 
-                  <h4 style={{ marginBottom: "10px" }}>コメント</h4>
+                    {createDmLink(q) ? (
+                      <a href={createDmLink(q)} style={styles.dmButton}>
+                        出品者にDMする
+                      </a>
+                    ) : (
+                      <span style={{ color: "#9ca3af", fontSize: "14px" }}>
+                        DM不可
+                      </span>
+                    )}
+                  </div>
+
+                  <p style={styles.questionBody}>{getDisplayBody(q)}</p>
+
+                  <p style={styles.publicCommentNote}>
+                    ※ここは公開コメント欄です。個別連絡は「出品者にDMする」を使ってください。
+                  </p>
+
+                  <h4 style={{ marginBottom: "10px" }}>公開コメント</h4>
 
                   {q.answers && q.answers.length > 0 ? (
                     q.answers.map((answer) => (
@@ -739,9 +856,29 @@ function App() {
               </span>
 
               <h3 style={styles.questionTitle}>{q.title}</h3>
-              <p style={styles.questionBody}>{q.body}</p>
+              <div style={styles.sellerRow}>
+                    <p style={styles.sellerText}>
+                      出品者：{getSellerInfo(q).name}
+                    </p>
 
-              <h4 style={{ marginBottom: "10px" }}>コメント</h4>
+                    {createDmLink(q) ? (
+                      <a href={createDmLink(q)} style={styles.dmButton}>
+                        出品者にDMする
+                      </a>
+                    ) : (
+                      <span style={{ color: "#9ca3af", fontSize: "14px" }}>
+                        DM不可
+                      </span>
+                    )}
+                  </div>
+
+                  <p style={styles.questionBody}>{getDisplayBody(q)}</p>
+
+              <p style={styles.publicCommentNote}>
+                    ※ここは公開コメント欄です。個別連絡は「出品者にDMする」を使ってください。
+                  </p>
+
+                  <h4 style={{ marginBottom: "10px" }}>公開コメント</h4>
 
               {q.answers && q.answers.length > 0 ? (
                 q.answers.map((answer) => (
@@ -763,7 +900,7 @@ function App() {
                         [q.id]: e.target.value,
                       })
                     }
-                    placeholder="コメントを書く..."
+                    placeholder="公開コメントを書く...（全員に見えます）"
                     style={{
                       ...styles.textarea,
                       height: "90px",
@@ -778,12 +915,12 @@ function App() {
                       marginTop: "10px",
                     }}
                   >
-                    コメントを投稿する
+                    公開コメントを投稿する
                   </button>
                 </>
               ) : (
                 <p style={{ color: "#9ca3af" }}>
-                  コメントするにはログインしてください。
+                  公開コメントを投稿するにはログインしてください。
                 </p>
               )}
             </div>
